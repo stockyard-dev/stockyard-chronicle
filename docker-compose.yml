@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  chronicle:
+    build: .
+    ports:
+      - "9290:9290"
+    environment:
+      - PORT=9290
+      - DATA_DIR=/data
+      - CHRONICLE_LICENSE_KEY=
+    volumes:
+      - chronicle_data:/data
+    restart: unless-stopped
+volumes:
+  chronicle_data:
