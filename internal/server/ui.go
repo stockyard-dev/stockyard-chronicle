@@ -1,120 +1,40 @@
 package server
 
 var dashboardHTML = []byte(`<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stockyard Chronicle</title>
-<style>
-  :root {
-    --bg: #1a1410;
-    --surface: #241c15;
-    --border: #3d2e1e;
-    --rust: #c4622d;
-    --leather: #8b5e3c;
-    --cream: #f5e6c8;
-    --muted: #7a6550;
-    --text: #e8d5b0;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace, sans-serif; min-height: 100vh; }
-  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; }
-  .logo { color: var(--rust); font-size: 1.25rem; font-weight: 700; letter-spacing: 0.05em; }
-  .badge { background: var(--rust); color: var(--cream); font-size: 0.65rem; padding: 0.2rem 0.5rem; border-radius: 3px; font-weight: 600; text-transform: uppercase; }
-  main { max-width: 960px; margin: 2rem auto; padding: 0 2rem; }
-  .hero { text-align: center; padding: 3rem 0 2rem; }
-  .hero h1 { font-size: 2rem; color: var(--cream); margin-bottom: 0.5rem; }
-  .hero p { color: var(--muted); font-size: 0.95rem; max-width: 480px; margin: 0 auto; }
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 2rem 0; }
-  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1.25rem; text-align: center; }
-  .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--rust); }
-  .stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1.5rem; margin-bottom: 1rem; }
-  .card h2 { font-size: 1rem; color: var(--cream); margin-bottom: 1rem; }
-  .tier-box { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  .tier { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1rem; }
-  .tier.pro { border-color: var(--rust); }
-  .tier-name { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.5rem; }
-  .tier.pro .tier-name { color: var(--rust); }
-  .tier-desc { font-size: 0.85rem; color: var(--text); }
-  .tier-price { font-size: 0.8rem; color: var(--leather); margin-top: 0.5rem; }
-  footer { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.75rem; }
-  footer a { color: var(--leather); text-decoration: none; }
-  .endpoint-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-  .endpoint-table th { text-align: left; color: var(--muted); padding: 0.5rem; border-bottom: 1px solid var(--border); }
-  .endpoint-table td { padding: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); }
-  .method { color: var(--rust); font-weight: 600; }
-</style>
-</head>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Stockyard Chronicle</title><style>:root{--bg:#1a1410;--surface:#241c15;--border:#3d2e1e;--rust:#c4622d;--cream:#f5e6c8;--muted:#7a6550;--text:#e8d5b0}*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace,sans-serif}header{background:var(--surface);border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1rem}.logo{color:var(--rust);font-size:1.25rem;font-weight:700}.badge{background:var(--rust);color:var(--cream);font-size:0.65rem;padding:0.2rem 0.5rem;border-radius:3px;font-weight:600;text-transform:uppercase}main{max-width:1100px;margin:0 auto;padding:2rem}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem}.stat{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1.25rem;text-align:center}.stat-value{font-size:1.75rem;font-weight:700;color:var(--rust)}.stat-label{font-size:0.75rem;color:var(--muted);margin-top:0.25rem;text-transform:uppercase;letter-spacing:0.05em}.layout{display:grid;grid-template-columns:240px 1fr;gap:1rem}.card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1.5rem;margin-bottom:1rem}.card h2{font-size:0.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:1rem}.form-row{display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap}select,input,textarea{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.75rem;border-radius:4px;font-family:inherit;font-size:0.85rem;flex:1}textarea{resize:vertical;flex:none;width:100%;min-height:80px}.btn{background:var(--rust);color:var(--cream);border:none;padding:0.5rem 1rem;border-radius:4px;cursor:pointer;font-family:inherit;font-size:0.85rem;font-weight:600}.btn:hover{opacity:0.85}.btn-sm{padding:0.25rem 0.6rem;font-size:0.75rem}.btn-danger{background:#7a2020}.proj-item{padding:0.5rem 0.75rem;cursor:pointer;border-radius:4px;margin-bottom:0.25rem}.proj-item:hover,.proj-item.active{background:rgba(196,98,45,0.15)}.proj-item.active{border-left:3px solid var(--rust)}.entry-item{padding:0.75rem 0;border-bottom:1px solid var(--border)}.entry-version{font-size:0.72rem;color:var(--rust);font-weight:700;margin-bottom:0.2rem}.entry-title{color:var(--cream);font-weight:600;margin-bottom:0.25rem}.entry-body{font-size:0.82rem;color:var(--muted);margin-bottom:0.25rem}.entry-meta{font-size:0.7rem;color:var(--muted)}.kind-badge{font-size:0.65rem;padding:0.1rem 0.4rem;border-radius:3px;margin-right:0.3rem}.kind-feat{background:#1a2a3a;color:#5bc0de}.kind-fix{background:#3a1a1a;color:#d9534f}.kind-change{background:#2a2a1a;color:#b8a060}.kind-break{background:#3a1a2a;color:#e060b8}.empty{color:var(--muted);font-size:0.85rem;padding:1rem 0;text-align:center}</style></head>
 <body>
-<header>
-  <span class="logo">⬡ Stockyard</span>
-  <span style="color:var(--muted);">/</span>
-  <span style="color:var(--cream);font-weight:600;">Chronicle</span>
-  <span class="badge">v0.1.0</span>
-</header>
+<header><span class="logo">&#x2B21; Stockyard</span><span style="color:var(--muted)">/</span><span style="color:var(--cream);font-weight:600">Chronicle</span><span class="badge">Changelog</span></header>
 <main>
-  <div class="hero">
-    <h1>Chronicle</h1>
-    <p>Changelog and release notes — write entries, publish a public page, RSS and email subscribe</p>
-  </div>
-  <div class="stats">
-    <div class="stat">
-      <div class="stat-value" id="stat-items">—</div>
-      <div class="stat-label">Total Items</div>
-    </div>
-    <div class="stat">
-      <div class="stat-value">9290</div>
-      <div class="stat-label">Port</div>
-    </div>
-    <div class="stat">
-      <div class="stat-value" id="stat-tier">—</div>
-      <div class="stat-label">Tier</div>
-    </div>
-  </div>
-  <div class="card">
-    <h2>Tier &amp; Limits</h2>
-    <div class="tier-box">
-      <div class="tier">
-        <div class="tier-name">Free</div>
-        <div class="tier-desc">1 project, 20 entries</div>
-        <div class="tier-price">$0/mo</div>
-      </div>
-      <div class="tier pro">
-        <div class="tier-name">Pro</div>
-        <div class="tier-desc">Unlimited projects and entries</div>
-        <div class="tier-price">$1.99/mo</div>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <h2>API Endpoints</h2>
-    <table class="endpoint-table">
-      <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
-      <tbody>
-        <tr><td class="method">GET</td><td>/health</td><td>Health check</td></tr>
-        <tr><td class="method">GET</td><td>/api/version</td><td>Version info</td></tr>
-        <tr><td class="method">GET</td><td>/api/limits</td><td>Current tier limits</td></tr>
-        <tr><td class="method">GET</td><td>/api/items</td><td>List items</td></tr>
-        <tr><td class="method">POST</td><td>/api/items</td><td>Create item</td></tr>
-        <tr><td class="method">GET</td><td>/api/items/{id}</td><td>Get item</td></tr>
-        <tr><td class="method">PUT</td><td>/api/items/{id}</td><td>Update item</td></tr>
-        <tr><td class="method">DELETE</td><td>/api/items/{id}</td><td>Delete item</td></tr>
-      </tbody>
-    </table>
-  </div>
+<div class="stats"><div class="stat"><div class="stat-value" id="s1">0</div><div class="stat-label">Projects</div></div><div class="stat"><div class="stat-value" id="s2">0</div><div class="stat-label">Entries</div></div><div class="stat"><div class="stat-value" id="s3">FREE</div><div class="stat-label">Tier</div></div></div>
+<div class="layout">
+<div>
+<div class="card"><h2>Projects</h2>
+<div class="form-row"><input id="f-pname" placeholder="Project name"><button class="btn btn-sm" onclick="addProject()">+</button></div>
+<div id="proj-list"><div class="empty">No projects</div></div></div>
+</div>
+<div>
+<div class="card" id="entry-card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem"><h2 style="margin:0">Changelog: <span id="cur-proj" style="color:var(--cream)">—</span></h2></div>
+<div id="new-entry-form" style="display:none">
+<div class="form-row"><input id="f-ver" placeholder="Version (e.g. 1.2.0)"><select id="f-kind"><option value="change">change</option><option value="feat">feature</option><option value="fix">fix</option><option value="break">breaking</option></select></div>
+<div class="form-row"><input id="f-title" placeholder="Entry title"></div>
+<textarea id="f-body" rows="4" placeholder="Details..."></textarea>
+<div style="display:flex;gap:0.5rem;margin-top:0.5rem"><button class="btn btn-sm" onclick="addEntry()">Add Entry</button><button class="btn btn-sm" style="background:var(--surface);border:1px solid var(--border)" onclick="document.getElementById('new-entry-form').style.display='none'">Cancel</button></div></div>
+<button class="btn btn-sm" id="add-entry-btn" style="display:none;margin-bottom:1rem" onclick="document.getElementById('new-entry-form').style.display='block';this.style.display='none'">+ Add Entry</button>
+<div id="entry-list"><div class="empty">Select a project</div></div>
+</div>
+</div>
+</div>
 </main>
-<footer>
-  <a href="https://stockyard.dev">stockyard.dev</a> &mdash; Creator & Small Business &mdash; Apache 2.0
-</footer>
 <script>
-fetch('/api/limits').then(r=>r.json()).then(d=>{
-  document.getElementById('stat-tier').textContent = d.tier.toUpperCase();
-});
-fetch('/api/items').then(r=>r.json()).then(d=>{
-  document.getElementById('stat-items').textContent = Array.isArray(d) ? d.length : '0';
-});
-</script>
-</body>
-</html>`)
+var curProj=null;
+function load(){fetch('/api/stats').then(function(r){return r.json()}).then(function(d){document.getElementById('s2').textContent=d.entries||0})}
+function loadProjects(){fetch('/api/projects').then(function(r){return r.json()}).then(function(list){document.getElementById('s1').textContent=list.length;var el=document.getElementById('proj-list');el.innerHTML=list.length?list.map(function(p){return'<div class="proj-item'+(curProj===p.id?' active':'')+'" onclick="selectProject('+p.id+',\''+p.name+'\')"><div style="display:flex;justify-content:space-between">'+p.name+'<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();delProject('+p.id+')">x</button></div></div>'}).join(''):'<div class="empty">No projects</div>'})}
+function selectProject(id,name){curProj=id;document.getElementById('cur-proj').textContent=name;document.getElementById('add-entry-btn').style.display='inline-block';loadEntries(id);loadProjects()}
+function loadEntries(id){fetch('/api/projects/'+id+'/entries').then(function(r){return r.json()}).then(function(list){var el=document.getElementById('entry-list');var kc={feat:'kind-feat',fix:'kind-fix',change:'kind-change',break:'kind-break'};el.innerHTML=list.length?list.map(function(e){return'<div class="entry-item">'+(e.version?'<div class="entry-version">v'+e.version+'</div>':'')+'<div class="entry-title"><span class="kind-badge '+(kc[e.kind]||'')+'">'+e.kind+'</span>'+e.title+'</div>'+(e.body?'<div class="entry-body">'+e.body+'</div>':'')+'<div class="entry-meta">'+e.created_at.substring(0,10)+' <button class="btn btn-sm btn-danger" onclick="delEntry('+e.id+')">x</button></div></div>'}).join(''):'<div class="empty">No entries yet. Add your first changelog entry above.</div>'})}
+function addProject(){var n=document.getElementById('f-pname').value.trim();if(!n)return;fetch('/api/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,slug:n.toLowerCase().replace(/[^a-z0-9]+/g,'-')})}).then(function(){document.getElementById('f-pname').value='';loadProjects()})}
+function delProject(id){fetch('/api/projects/'+id,{method:'DELETE'}).then(function(){if(curProj===id){curProj=null;document.getElementById('cur-proj').textContent='--'};loadProjects();load()})}
+function addEntry(){if(!curProj)return;var d={version:document.getElementById('f-ver').value.trim(),title:document.getElementById('f-title').value.trim(),body:document.getElementById('f-body').value.trim(),kind:document.getElementById('f-kind').value};if(!d.title)return;fetch('/api/projects/'+curProj+'/entries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(function(){document.getElementById('f-ver').value='';document.getElementById('f-title').value='';document.getElementById('f-body').value='';document.getElementById('new-entry-form').style.display='none';document.getElementById('add-entry-btn').style.display='inline-block';loadEntries(curProj);load()})}
+function delEntry(id){fetch('/api/entries/'+id,{method:'DELETE'}).then(function(){if(curProj)loadEntries(curProj);load()})}
+load();loadProjects();
+</script></body></html>`)

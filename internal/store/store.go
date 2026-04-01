@@ -1,58 +1,14 @@
 package store
-
-import (
-	"database/sql"
-	"fmt"
-	"os"
-	"path/filepath"
-
-	_ "modernc.org/sqlite"
-)
-
-type DB struct {
-	*sql.DB
-}
-
-func Open(dataDir string) (*DB, error) {
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		return nil, fmt.Errorf("mkdir: %w", err)
-	}
-	dsn := filepath.Join(dataDir, "chronicle.db") + "?_journal_mode=WAL&_busy_timeout=5000"
-	db, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("open: %w", err)
-	}
-	db.SetMaxOpenConns(1)
-	if err := migrate(db); err != nil {
-		return nil, fmt.Errorf("migrate: %w", err)
-	}
-	return &DB{db}, nil
-}
-
-func migrate(db *sql.DB) error {
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS projects (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        description TEXT,
-        website TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-     );
-     CREATE TABLE IF NOT EXISTS entries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_id INTEGER NOT NULL,
-        version TEXT,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        type TEXT DEFAULT 'update',
-        published_at DATETIME,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-     );
-     CREATE TABLE IF NOT EXISTS subscribers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_id INTEGER NOT NULL,
-        email TEXT NOT NULL,
-        subscribed_at DATETIME DEFAULT CURRENT_TIMESTAMP
-     );`)
-	return err
-}
+import("database/sql";"fmt";"os";"path/filepath";"time";_ "modernc.org/sqlite")
+type DB struct{*sql.DB}
+type Project struct{ID int64 `json:"id"`;Name string `json:"name"`;Slug string `json:"slug"`;Description string `json:"description"`;CreatedAt time.Time `json:"created_at"`}
+type Entry struct{ID int64 `json:"id"`;ProjectID int64 `json:"project_id"`;ProjectName string `json:"project_name,omitempty"`;Version string `json:"version"`;Title string `json:"title"`;Body string `json:"body"`;Kind string `json:"kind"`;CreatedAt time.Time `json:"created_at"`}
+func Open(dataDir string)(*DB,error){if err:=os.MkdirAll(dataDir,0755);err!=nil{return nil,fmt.Errorf("mkdir: %w",err)};dsn:=filepath.Join(dataDir,"chronicle.db")+"?_journal_mode=WAL&_busy_timeout=5000";db,err:=sql.Open("sqlite",dsn);if err!=nil{return nil,fmt.Errorf("open: %w",err)};db.SetMaxOpenConns(1);if err:=migrate(db);err!=nil{return nil,fmt.Errorf("migrate: %w",err)};return &DB{db},nil}
+func migrate(db *sql.DB)error{_,err:=db.Exec(`CREATE TABLE IF NOT EXISTS projects(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,slug TEXT NOT NULL UNIQUE,description TEXT DEFAULT '',created_at DATETIME DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS entries(id INTEGER PRIMARY KEY AUTOINCREMENT,project_id INTEGER NOT NULL,version TEXT DEFAULT '',title TEXT NOT NULL,body TEXT DEFAULT '',kind TEXT DEFAULT 'change',created_at DATETIME DEFAULT CURRENT_TIMESTAMP);`);return err}
+func(db *DB)ListProjects()([]Project,error){rows,err:=db.Query(`SELECT id,name,slug,description,created_at FROM projects ORDER BY name`);if err!=nil{return nil,err};defer rows.Close();var out[]Project;for rows.Next(){var p Project;rows.Scan(&p.ID,&p.Name,&p.Slug,&p.Description,&p.CreatedAt);out=append(out,p)};return out,nil}
+func(db *DB)CreateProject(p *Project)error{if p.Slug==""{p.Slug=p.Name};res,err:=db.Exec(`INSERT INTO projects(name,slug,description)VALUES(?,?,?)`,p.Name,p.Slug,p.Description);if err!=nil{return err};p.ID,_=res.LastInsertId();return nil}
+func(db *DB)DeleteProject(id int64)error{_,err:=db.Exec(`DELETE FROM projects WHERE id=?`,id);_,_=db.Exec(`DELETE FROM entries WHERE project_id=?`,id);return err}
+func(db *DB)ListEntries(projectID int64)([]Entry,error){rows,err:=db.Query(`SELECT e.id,e.project_id,COALESCE(p.name,''),e.version,e.title,e.body,e.kind,e.created_at FROM entries e LEFT JOIN projects p ON p.id=e.project_id WHERE e.project_id=? ORDER BY e.created_at DESC`,projectID);if err!=nil{return nil,err};defer rows.Close();var out[]Entry;for rows.Next(){var e Entry;rows.Scan(&e.ID,&e.ProjectID,&e.ProjectName,&e.Version,&e.Title,&e.Body,&e.Kind,&e.CreatedAt);out=append(out,e)};return out,nil}
+func(db *DB)CreateEntry(e *Entry)error{if e.Kind==""{e.Kind="change"};res,err:=db.Exec(`INSERT INTO entries(project_id,version,title,body,kind)VALUES(?,?,?,?,?)`,e.ProjectID,e.Version,e.Title,e.Body,e.Kind);if err!=nil{return err};e.ID,_=res.LastInsertId();return nil}
+func(db *DB)DeleteEntry(id int64)error{_,err:=db.Exec(`DELETE FROM entries WHERE id=?`,id);return err}
+func(db *DB)CountEntries()(int,error){var n int;db.QueryRow(`SELECT COUNT(*) FROM entries`).Scan(&n);return n,nil}
