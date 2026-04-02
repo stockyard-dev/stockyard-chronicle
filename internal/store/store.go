@@ -1,14 +1,30 @@
 package store
-import("database/sql";"fmt";"os";"path/filepath";"time";_ "modernc.org/sqlite")
-type DB struct{*sql.DB}
-type Project struct{ID int64 `json:"id"`;Name string `json:"name"`;Slug string `json:"slug"`;Description string `json:"description"`;CreatedAt time.Time `json:"created_at"`}
-type Entry struct{ID int64 `json:"id"`;ProjectID int64 `json:"project_id"`;ProjectName string `json:"project_name,omitempty"`;Version string `json:"version"`;Title string `json:"title"`;Body string `json:"body"`;Kind string `json:"kind"`;CreatedAt time.Time `json:"created_at"`}
-func Open(dataDir string)(*DB,error){if err:=os.MkdirAll(dataDir,0755);err!=nil{return nil,fmt.Errorf("mkdir: %w",err)};dsn:=filepath.Join(dataDir,"chronicle.db")+"?_journal_mode=WAL&_busy_timeout=5000";db,err:=sql.Open("sqlite",dsn);if err!=nil{return nil,fmt.Errorf("open: %w",err)};db.SetMaxOpenConns(1);if err:=migrate(db);err!=nil{return nil,fmt.Errorf("migrate: %w",err)};return &DB{db},nil}
-func migrate(db *sql.DB)error{_,err:=db.Exec(`CREATE TABLE IF NOT EXISTS projects(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,slug TEXT NOT NULL UNIQUE,description TEXT DEFAULT '',created_at DATETIME DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS entries(id INTEGER PRIMARY KEY AUTOINCREMENT,project_id INTEGER NOT NULL,version TEXT DEFAULT '',title TEXT NOT NULL,body TEXT DEFAULT '',kind TEXT DEFAULT 'change',created_at DATETIME DEFAULT CURRENT_TIMESTAMP);`);return err}
-func(db *DB)ListProjects()([]Project,error){rows,err:=db.Query(`SELECT id,name,slug,description,created_at FROM projects ORDER BY name`);if err!=nil{return nil,err};defer rows.Close();var out[]Project;for rows.Next(){var p Project;rows.Scan(&p.ID,&p.Name,&p.Slug,&p.Description,&p.CreatedAt);out=append(out,p)};return out,nil}
-func(db *DB)CreateProject(p *Project)error{if p.Slug==""{p.Slug=p.Name};res,err:=db.Exec(`INSERT INTO projects(name,slug,description)VALUES(?,?,?)`,p.Name,p.Slug,p.Description);if err!=nil{return err};p.ID,_=res.LastInsertId();return nil}
-func(db *DB)DeleteProject(id int64)error{_,err:=db.Exec(`DELETE FROM projects WHERE id=?`,id);_,_=db.Exec(`DELETE FROM entries WHERE project_id=?`,id);return err}
-func(db *DB)ListEntries(projectID int64)([]Entry,error){rows,err:=db.Query(`SELECT e.id,e.project_id,COALESCE(p.name,''),e.version,e.title,e.body,e.kind,e.created_at FROM entries e LEFT JOIN projects p ON p.id=e.project_id WHERE e.project_id=? ORDER BY e.created_at DESC`,projectID);if err!=nil{return nil,err};defer rows.Close();var out[]Entry;for rows.Next(){var e Entry;rows.Scan(&e.ID,&e.ProjectID,&e.ProjectName,&e.Version,&e.Title,&e.Body,&e.Kind,&e.CreatedAt);out=append(out,e)};return out,nil}
-func(db *DB)CreateEntry(e *Entry)error{if e.Kind==""{e.Kind="change"};res,err:=db.Exec(`INSERT INTO entries(project_id,version,title,body,kind)VALUES(?,?,?,?,?)`,e.ProjectID,e.Version,e.Title,e.Body,e.Kind);if err!=nil{return err};e.ID,_=res.LastInsertId();return nil}
-func(db *DB)DeleteEntry(id int64)error{_,err:=db.Exec(`DELETE FROM entries WHERE id=?`,id);return err}
-func(db *DB)CountEntries()(int,error){var n int;db.QueryRow(`SELECT COUNT(*) FROM entries`).Scan(&n);return n,nil}
+import ("database/sql";"fmt";"os";"path/filepath";"strings";"time";_ "modernc.org/sqlite")
+type DB struct{db *sql.DB}
+type Event struct{ID string `json:"id"`;Type string `json:"type"`;Source string `json:"source,omitempty"`;Subject string `json:"subject,omitempty"`;Data string `json:"data,omitempty"`;Severity string `json:"severity,omitempty"`;Tags string `json:"tags,omitempty"`;CreatedAt string `json:"created_at"`}
+type TypeCount struct{Type string `json:"type"`;Count int `json:"count"`}
+func Open(d string)(*DB,error){if err:=os.MkdirAll(d,0755);err!=nil{return nil,err};db,err:=sql.Open("sqlite",filepath.Join(d,"chronicle.db")+"?_journal_mode=WAL&_busy_timeout=5000");if err!=nil{return nil,err}
+db.Exec(`CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY,type TEXT NOT NULL,source TEXT DEFAULT '',subject TEXT DEFAULT '',data TEXT DEFAULT '',severity TEXT DEFAULT 'info',tags TEXT DEFAULT '',created_at TEXT DEFAULT(datetime('now')))`)
+db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_type ON events(type)`)
+db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_source ON events(source)`)
+db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_date ON events(created_at)`)
+return &DB{db:db},nil}
+func(d *DB)Close()error{return d.db.Close()}
+func genID()string{return fmt.Sprintf("%d",time.Now().UnixNano())}
+func now()string{return time.Now().UTC().Format(time.RFC3339)}
+func(d *DB)Emit(e *Event)error{e.ID=genID();e.CreatedAt=now();if e.Severity==""{e.Severity="info"}
+_,err:=d.db.Exec(`INSERT INTO events VALUES(?,?,?,?,?,?,?,?)`,e.ID,e.Type,e.Source,e.Subject,e.Data,e.Severity,e.Tags,e.CreatedAt);return err}
+func(d *DB)Query(typ,source,severity,search string,limit int)[]Event{if limit<=0{limit=100};where:=[]string{"1=1"};args:=[]any{}
+if typ!=""{where=append(where,"type=?");args=append(args,typ)}
+if source!=""{where=append(where,"source=?");args=append(args,source)}
+if severity!=""{where=append(where,"severity=?");args=append(args,severity)}
+if search!=""{where=append(where,"(subject LIKE ? OR data LIKE ?)");s:="%"+search+"%";args=append(args,s,s)}
+rows,_:=d.db.Query(`SELECT * FROM events WHERE `+strings.Join(where," AND ")+` ORDER BY created_at DESC LIMIT ?`,append(args,limit)...)
+if rows==nil{return nil};defer rows.Close()
+var o []Event;for rows.Next(){var e Event;rows.Scan(&e.ID,&e.Type,&e.Source,&e.Subject,&e.Data,&e.Severity,&e.Tags,&e.CreatedAt);o=append(o,e)};return o}
+func(d *DB)TopTypes(limit int)[]TypeCount{if limit<=0{limit=20};rows,_:=d.db.Query(`SELECT type,COUNT(*) c FROM events GROUP BY type ORDER BY c DESC LIMIT ?`,limit);if rows==nil{return nil};defer rows.Close()
+var o []TypeCount;for rows.Next(){var t TypeCount;rows.Scan(&t.Type,&t.Count);o=append(o,t)};return o}
+func(d *DB)Sources()[]string{rows,_:=d.db.Query(`SELECT DISTINCT source FROM events WHERE source!='' ORDER BY source`);if rows==nil{return nil};defer rows.Close();var o []string;for rows.Next(){var s string;rows.Scan(&s);o=append(o,s)};return o}
+type Stats struct{Total int `json:"total"`;Types int `json:"types"`;Sources int `json:"sources"`;Today int `json:"today"`}
+func(d *DB)Stats()Stats{var s Stats;d.db.QueryRow(`SELECT COUNT(*) FROM events`).Scan(&s.Total);d.db.QueryRow(`SELECT COUNT(DISTINCT type) FROM events`).Scan(&s.Types);s.Sources=len(d.Sources())
+today:=time.Now().Format("2006-01-02");d.db.QueryRow(`SELECT COUNT(*) FROM events WHERE created_at>=?`,today+"T00:00:00Z").Scan(&s.Today);return s}

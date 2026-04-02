@@ -1,43 +1,6 @@
 package main
-
-import (
-	"log"
-	"os"
-
-	"github.com/stockyard-dev/stockyard-chronicle/internal/license"
-	"github.com/stockyard-dev/stockyard-chronicle/internal/server"
-	"github.com/stockyard-dev/stockyard-chronicle/internal/store"
-)
-
-func main() {
-	port := getEnv("PORT", "9290")
-	dataDir := getEnv("DATA_DIR", "./data")
-	licenseKey := os.Getenv("CHRONICLE_LICENSE_KEY")
-
-	tier := "free"
-	if licenseKey != "" {
-		if license.Validate(licenseKey) {
-			tier = "pro"
-			log.Println("License valid — Pro tier active")
-		} else {
-			log.Println("Warning: invalid license key, running as free tier")
-		}
-	}
-
-	db, err := store.Open(dataDir)
-	if err != nil {
-		log.Fatalf("store: %v", err)
-	}
-	defer db.Close()
-
-	srv := server.New(db, tier)
-	log.Printf("Stockyard Chronicle listening on :%s (tier: %s)", port, tier)
-	log.Fatal(srv.ListenAndServe(":" + port))
-}
-
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
+import ("fmt";"log";"net/http";"os";"github.com/stockyard-dev/stockyard-chronicle/internal/server";"github.com/stockyard-dev/stockyard-chronicle/internal/store")
+func main(){port:=os.Getenv("PORT");if port==""{port="8760"};dataDir:=os.Getenv("DATA_DIR");if dataDir==""{dataDir="./chronicle-data"}
+db,err:=store.Open(dataDir);if err!=nil{log.Fatalf("chronicle: %v",err)};defer db.Close();srv:=server.New(db)
+fmt.Printf("\n  Chronicle — Self-hosted event log\n  ─────────────────────────────────\n  Dashboard:  http://localhost:%s/ui\n  API:        http://localhost:%s/api\n  Data:       %s\n  ─────────────────────────────────\n\n",port,port,dataDir)
+log.Printf("chronicle: listening on :%s",port);log.Fatal(http.ListenAndServe(":"+port,srv))}
