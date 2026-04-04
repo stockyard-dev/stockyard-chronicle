@@ -1,24 +1,52 @@
 package server
 import "net/http"
-func(s *Server)dashboard(w http.ResponseWriter,r *http.Request){w.Header().Set("Content-Type","text/html; charset=utf-8");w.Write([]byte(dashHTML))}
-const dashHTML=`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chronicle</title>
-<style>:root{--bg:#1a1410;--bg2:#241e18;--bg3:#2e261e;--rust:#c45d2c;--rl:#e8753a;--leather:#a0845c;--cream:#f0e6d3;--cd:#bfb5a3;--cm:#7a7060;--gold:#d4a843;--green:#4a9e5c;--red:#c44040;--mono:'JetBrains Mono',Consolas,monospace;--serif:'Libre Baskerville',Georgia,serif}*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--cream);font-family:var(--mono);font-size:13px;line-height:1.6}.hdr{padding:.6rem 1.2rem;border-bottom:1px solid var(--bg3);display:flex;justify-content:space-between;align-items:center}.hdr h1{font-family:var(--serif);font-size:1rem}.hdr h1 span{color:var(--rl)}.main{max-width:900px;margin:0 auto;padding:1rem}.overview{display:flex;gap:1.5rem;margin-bottom:1rem;font-size:.7rem;color:var(--leather)}.overview .stat b{display:block;font-size:1.2rem;color:var(--cream)}.toolbar{display:flex;gap:.5rem;margin-bottom:.8rem;flex-wrap:wrap;align-items:center}.toolbar select,.toolbar input{background:var(--bg);border:1px solid var(--bg3);color:var(--cream);padding:.3rem .5rem;font-family:var(--mono);font-size:.72rem;outline:none}.toolbar input{flex:1;min-width:120px}.evt-row{display:flex;align-items:center;gap:.5rem;padding:.3rem .5rem;border-bottom:1px solid var(--bg3);font-size:.72rem}.evt-type{color:var(--gold);width:80px;flex-shrink:0;font-weight:600}.evt-source{color:var(--leather);width:60px;flex-shrink:0}.evt-subject{flex:1;color:var(--cd)}.sev{font-size:.55rem;padding:.05rem .25rem;border-radius:2px}.sev-info{color:var(--cm)}.sev-warning{color:var(--gold)}.sev-error{color:var(--red)}.sev-critical{color:var(--red);font-weight:700}.evt-time{color:var(--cm);font-size:.6rem;width:50px;flex-shrink:0}.empty{text-align:center;padding:2rem;color:var(--cm);font-style:italic;font-family:var(--serif)}.btn{font-family:var(--mono);font-size:.68rem;padding:.3rem .6rem;border:1px solid;cursor:pointer;background:transparent}.btn-p{border-color:var(--rust);color:var(--rl)}.btn-p:hover{background:var(--rust);color:var(--cream)}</style>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-</head><body><div class="hdr"><h1><span>Chronicle</span></h1><span style="font-size:.65rem;color:var(--cm)">POST /api/events</span></div>
-<div class="main"><div id="upgrade-banner" style="display:none;background:#241e18;border:1px solid #8b3d1a;border-left:3px solid #c45d2c;padding:.6rem 1rem;font-size:.78rem;color:#bfb5a3;margin-bottom:.8rem"><strong style="color:#f0e6d3">Free tier</strong> — 10 items max. <a href="https://stockyard.dev/chronicle/" target="_blank" style="color:#e8753a">Upgrade to Pro →</a></div><div class="overview" id="ov"></div>
-<div class="toolbar"><select id="fType" onchange="load()"><option value="">All types</option></select><select id="fSource" onchange="load()"><option value="">All sources</option></select><input type="text" id="fSearch" placeholder="Search..." onkeydown="if(event.key==='Enter')load()"><button class="btn btn-p" onclick="load()">Filter</button></div>
-<div id="list"></div></div>
+func(s *Server)dashboard(w http.ResponseWriter,r *http.Request){w.Header().Set("Content-Type","text/html");w.Write([]byte(dashHTML))}
+const dashHTML=`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Chronicle</title>
+<style>:root{--bg:#1a1410;--bg2:#241e18;--bg3:#2e261e;--rust:#e8753a;--leather:#a0845c;--cream:#f0e6d3;--cd:#bfb5a3;--cm:#7a7060;--gold:#d4a843;--green:#4a9e5c;--red:#c94444;--orange:#d4843a;--blue:#4a7ec9;--mono:'JetBrains Mono',monospace}
+*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--cream);font-family:var(--mono);line-height:1.5}
+.hdr{padding:1rem 1.5rem;border-bottom:1px solid var(--bg3);display:flex;justify-content:space-between;align-items:center}.hdr h1{font-size:.9rem;letter-spacing:2px}
+.main{padding:1rem 1.5rem;max-width:1000px;margin:0 auto}
+.filters{display:flex;gap:.3rem;margin-bottom:.8rem;flex-wrap:wrap}
+.fbtn{font-size:.55rem;padding:.2rem .4rem;border:1px solid var(--bg3);background:var(--bg);color:var(--cm);cursor:pointer}.fbtn:hover{border-color:var(--leather)}.fbtn.active{border-color:var(--rust);color:var(--rust)}
+.ev{display:flex;align-items:flex-start;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--bg3);font-size:.72rem}
+.ev-time{font-size:.6rem;color:var(--cm);width:70px;flex-shrink:0}
+.ev-type{font-size:.55rem;padding:.1rem .3rem;min-width:60px;text-align:center;text-transform:uppercase}
+.ev-type-info{background:#4a7ec922;color:var(--blue);border:1px solid #4a7ec944}
+.ev-type-warning{background:#d4843a22;color:var(--orange);border:1px solid #d4843a44}
+.ev-type-error{background:#c9444422;color:var(--red);border:1px solid #c9444444}
+.ev-type-debug{background:var(--bg3);color:var(--cm)}
+.ev-type-custom{background:#4a9e5c22;color:var(--green);border:1px solid #4a9e5c44}
+.ev-body{flex:1;color:var(--cd)}
+.ev-source{font-size:.6rem;color:var(--cm)}
+.ev-data{font-size:.6rem;color:var(--cm);background:var(--bg);padding:.2rem .4rem;margin-top:.2rem;max-height:40px;overflow:hidden;cursor:pointer}
+.ev-data:hover{max-height:none}
+.stats{font-size:.65rem;color:var(--cm);margin-bottom:.8rem}
+.empty{text-align:center;padding:3rem;color:var(--cm);font-style:italic;font-size:.75rem}
+</style></head><body>
+<div class="hdr"><h1>CHRONICLE</h1><div class="stats" id="stats"></div></div>
+<div class="main">
+<div class="filters" id="filters"></div>
+<div id="events"></div>
+</div>
 <script>
-async function api(u){return(await fetch(u)).json()}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function timeAgo(d){if(!d)return'';const s=Math.floor((Date.now()-new Date(d))/1e3);if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m';return Math.floor(s/3600)+'h'}
-async function init(){const[sd,td,srd]=await Promise.all([api('/api/stats'),api('/api/types'),api('/api/sources')]);
-document.getElementById('ov').innerHTML='<div class="stat"><b>'+sd.today+'</b>Today</div><div class="stat"><b>'+sd.total+'</b>Total</div><div class="stat"><b>'+sd.types+'</b>Types</div><div class="stat"><b>'+sd.sources+'</b>Sources</div>';
-document.getElementById('fType').innerHTML='<option value="">All types</option>'+((td.types||[]).map(t=>'<option>'+esc(t.type)+'</option>').join(''));
-document.getElementById('fSource').innerHTML='<option value="">All sources</option>'+((srd.sources||[]).map(s=>'<option>'+esc(s)+'</option>').join(''));load()}
-async function load(){const p=new URLSearchParams();const t=document.getElementById('fType').value;if(t)p.set('type',t);const s=document.getElementById('fSource').value;if(s)p.set('source',s);const q=document.getElementById('fSearch').value;if(q)p.set('search',q)
-const d=await api('/api/events?'+p);const events=d.events||[];
-document.getElementById('list').innerHTML=events.length?events.map(e=>'<div class="evt-row"><span class="evt-type">'+esc(e.type)+'</span><span class="evt-source">'+esc(e.source)+'</span><span class="sev sev-'+e.severity+'">'+e.severity+'</span><span class="evt-subject">'+esc(e.subject||e.data?.substring(0,80))+'</span><span class="evt-time">'+timeAgo(e.created_at)+'</span></div>').join(''):'<div class="empty">No events yet. POST /api/events to start logging.</div>'}
-init();setInterval(load,5000)
-fetch('/api/tier').then(r=>r.json()).then(j=>{if(j.tier==='free'){var b=document.getElementById('upgrade-banner');if(b)b.style.display='block'}}).catch(()=>{var b=document.getElementById('upgrade-banner');if(b)b.style.display='block'});
+const A='/api';let events=[],types=[],filterType='';
+async function load(){const[e,s]=await Promise.all([fetch(A+'/events'+(filterType?'?type='+encodeURIComponent(filterType):'')).then(r=>r.json()),fetch(A+'/stats').then(r=>r.json())]);
+events=e.events||[];
+document.getElementById('stats').textContent=(s.total||0)+' events';
+const tc=s.by_type||{};types=Object.keys(tc);
+let fh='<button class="fbtn'+(filterType===''?' active':'')+'" onclick="setType(\'\')">All</button>';
+types.forEach(t=>{fh+='<button class="fbtn'+(filterType===t?' active':'')+'" onclick="setType(\''+t+'\')">'+t+' ('+tc[t]+')</button>';});
+document.getElementById('filters').innerHTML=fh;render();}
+function setType(t){filterType=t;load();}
+function render(){if(!events.length){document.getElementById('events').innerHTML='<div class="empty">No events logged. POST to /api/events to start.</div>';return;}
+let h='';events.forEach(e=>{
+const typeClass=(['info','warning','error','debug'].includes(e.type)?e.type:'custom');
+h+='<div class="ev"><span class="ev-time">'+ft(e.created_at)+'</span><span class="ev-type ev-type-'+typeClass+'">'+esc(e.type||'event')+'</span><div class="ev-body">'+esc(e.message);
+if(e.source)h+=' <span class="ev-source">['+esc(e.source)+']</span>';
+if(e.data&&e.data!=='{}')h+='<div class="ev-data">'+esc(e.data)+'</div>';
+h+='</div></div>';});
+document.getElementById('events').innerHTML=h;}
+function ft(t){if(!t)return'';const d=new Date(t);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+load();setInterval(load,5000);
 </script></body></html>`
